@@ -14,9 +14,30 @@
     keys[e.code] = true;
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Enter'].includes(e.code)) e.preventDefault();
     if (e.code === 'Enter') { if (game.state === 'title' || game.state === 'over') startMatch(); }
-    if (e.code === 'KeyT' && game.state === 'title') { game.twoPlayer = !game.twoPlayer; }
+    if (e.code === 'KeyT' && game.state === 'title' && !isTouch) { game.twoPlayer = !game.twoPlayer; }
   });
   addEventListener('keyup', e => { keys[e.code] = false; });
+
+  // ----- mobile / touch -----
+  const isTouch = window.matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window);
+  if (isTouch) {
+    document.body.classList.add('touch');
+    document.querySelectorAll('#touch [data-k]').forEach(btn => {
+      const k = btn.getAttribute('data-k');
+      const down = e => { e.preventDefault(); btn.classList.add('on'); keys[k] = true; };
+      const up   = e => { e.preventDefault(); btn.classList.remove('on'); keys[k] = false; };
+      btn.addEventListener('touchstart', down, { passive:false });
+      btn.addEventListener('touchend', up, { passive:false });
+      btn.addEventListener('touchcancel', up, { passive:false });
+      btn.addEventListener('mousedown', down);
+      btn.addEventListener('mouseup', up);
+      btn.addEventListener('mouseleave', up);
+    });
+    // tap the arena to start / rematch on mobile
+    cv.addEventListener('touchstart', e => {
+      if (game.state === 'title' || game.state === 'over') { e.preventDefault(); startMatch(); }
+    }, { passive:false });
+  }
 
   // ----- helpers -----
   const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
@@ -166,6 +187,7 @@
   newFighters();
 
   function startMatch(){
+    if(isTouch) game.twoPlayer = false; // mobile is always 1P vs CPU
     newFighters();
     game.state='fight'; game.timer=99; game.tick=0; game.round=1;
     game.msg='ROUND 1'; game.msgT=90;
@@ -338,14 +360,14 @@
       centerText('NEON FIST', 170, 86, '#00e5ff');
       centerText('a tekken/street-fighter style brawler', 210, 22, '#ff2e88');
       ctx.globalAlpha=0.6+0.4*Math.sin(game.tick*0.08);
-      centerText('PRESS ENTER TO FIGHT', 330, 30, '#fff'); ctx.globalAlpha=1;
-      centerText('MODE: '+(game.twoPlayer?'2 PLAYERS':'1P vs CPU')+'  (press T to toggle)', 380, 20, '#7fdfff');
+      centerText(isTouch?'TAP TO FIGHT':'PRESS ENTER TO FIGHT', 330, 30, '#fff'); ctx.globalAlpha=1;
+      centerText(isTouch? 'MODE: 1P vs CPU' : ('MODE: '+(game.twoPlayer?'2 PLAYERS':'1P vs CPU')+'  (press T to toggle)'), 380, 20, '#7fdfff');
     }
     else if(game.state==='over'){
       updateFx(); p1.draw(); p2.draw(); drawFx(); drawHud();
       centerText(game.msg, H/2-30, 64, game.msg.startsWith(p1.name)?'#00e5ff':'#ff2e88');
       ctx.globalAlpha=0.6+0.4*Math.sin(game.tick*0.08);
-      centerText('PRESS ENTER FOR REMATCH', H/2+30, 26, '#fff'); ctx.globalAlpha=1;
+      centerText(isTouch?'TAP FOR REMATCH':'PRESS ENTER FOR REMATCH', H/2+30, 26, '#fff'); ctx.globalAlpha=1;
     }
 
     ctx.restore();
